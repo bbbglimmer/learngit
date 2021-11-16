@@ -81,9 +81,10 @@ timedatectl set-ntp true
 前者的配置文件在/etc/systemd/timesyncd.conf 不配置会使用默认的时间服务器同步时间
 查看状态
 timedatectl status
+timedatectl show
 timedatectl show-timesync --all
 timedatectl timesync-status
-#设置硬件时钟为utc
+#设置硬件时钟为utc (rtc no 即为utc)
 timedatectl set-local-rtc 0
 #以系统时间为基准，修改硬件时间
 sudo hwclock --systohc
@@ -272,6 +273,7 @@ visudo 修改sudo文件，让wheel组可以操作所有命令,让glimmer用户�
 ```
 # %wheel ALL=(ALL) ALL
 ```
+sudo文件亦可以设置用户执行sudo命令免密码
 
 ### D.安装显示服务器
 显示服务器是任何图形用户界面（尤其是窗口系统）中的关键组件。它是图形用户界面（GUI）的基本组件，位于图形界面和内核之间。因此，借助显示服务器，您可以将计算机与GUI一起使用。没有它，您将只能使用命令行界面。
@@ -374,6 +376,8 @@ pacman -S yay
 ```
 yay -S google-chrome
 yay -S chromium
+# chrome的flash支持
+pepper-flash
 yay -S bc
 ```  
   
@@ -549,6 +553,15 @@ chmod a+s ~/.xinitrc
 `  
 
 #可以选择其他好看的greeter，就是登陆的页面
+可以对lightdm-gtk-greeter进行背景图片及头像的设置
+```
+sudo pacman -S lightdm-gtk-greeter-settings
+sudo pacman -S archlinux-artwork
+# /usr/share/archlinux/icons/archlinux-icon-crystal-64.svg
+sudo lightdm-gtk-greeter-settings #将头像设置成上边的路径
+```
+
+
 
 这里按选择二操作
 ```
@@ -625,11 +638,47 @@ sudo make clean install
 
 
 scripts脚本的简介及执行流程
+#见autostart.sh
+
+
+gtk和qt主题设置（让其保持一致）
+
+yay -S nordic-darker-theme
+sudo pacman -S papirus-icon-theme
+
+yay -S adapta-gtk-theme
+yay -S arc-icon-theme
+gtk和qt是linux下程序的不同的gui开发工具，由于不同程序使用不同的gui开发工具，会导致按键显示等的不同，人为让其保持一致。
+设置gtk主题及图标
+
+通过lxappearance可以设置gtk程序的主题和图标。
+
+sudo pacman -S lxappearance
+设置管理员和普通用户的主题
+sudo lxappearance
+
+设置 qt 主题和图标
+通过qt5ct可以设置qt程序的主题和图标。
+
+sudo pacman -S qt5ct
+使用qt5ct需要在~/.xinitrc文件中添加以下代码：
+
+export QT_QPA_PLATFORMTHEME=qt5ct
+安装qt5-styleplugins可以将qt程序设置为gtk风格。
+
+yay -S qt5-styleplugins
+或者
+pacman -S qt5-styleplugins
+
+分别设置管理员及普通用户的主题
+sudo qt5ct
+qt5ct
 
 
 
 
-### E.安装st（简单的终端模拟器） 
+### E.安装st（简单的终端模拟器）  
+
   
 官方安装（不建议，需要大量个人的配置）  
   
@@ -656,6 +705,25 @@ $ speaker-test -c 8
 sudo alsactl store  
 在引导时读取 /var/lib/alsa/asound.state ，并在关机时写入更新后的值，前提是已经运行 alsactl store 生成了配置文件
 sudo systemctl enable alsa-restore.service    
+
+#安装声音管理器
+sudo pacman -S pulseaudio pulseaudio-alsa 
+sudo pacman -S pavucontrol
+执行命令查看声音输出是否正常
+pavucontrol 
+
+#安装本地音频服务器和音频客户端
+sudo pacman -S mpd ncmpcpp deadbeef-git
+#注意mpd ncmpcpp支持conky中显示资源状态，除此外没啥用。倒不如deadbeef。
+复制对应应用的对应的配置文件到~/.config/ 下
+#启用mpd服务
+systemctl start mpd --user
+systemctl enable mpd --user
+#运行音乐播放器ncmpcp
+ncmpcpp  
+注意F1查看帮助，enter为播放音乐，空格按键不可用
+#运行音乐播放器deadbeef(此播放器不需要mpd支持)
+dmenu中查找deadbeef，运行，添加播放目录即可。
 
 ### G.安装截图工具flameshot(dwm,依赖工具)  
 
@@ -762,9 +830,27 @@ pacman -S xf86-input-libinput
 xinput list #查看所有输入设备
 xinput可以设置鼠标或者触摸板按键映射，触摸板灵敏度等
 配置方法
-cp /usr/share/X11/xorg.config.d/40-libinput.conf
-#修改touchpad中的内容如dwm/scripts/40-libinput.conf描述
+cp /usr/share/X11/xorg.config.d/40-libinput.conf /etc/X11/xorg.conf.d/40-libinput.conf
+#修改40-libinput.conf touchpad的内容描述，并且只保留touchpad的内容如下,或者复制git@github.com:bbbglimmer/keyboard_touchpad中的40-libinput.conf
+```
+Section "InputClass"
+        Identifier "libinput touchpad catchall"
+        MatchIsTouchpad "on"
+        MatchDevicePath "/dev/input/event*"
+        Driver "libinput"
+        Option "SendEventsMode" "disabled-on-external-mouse"
+        Option "Tapping" "True"
+        Option "DisableWhileTyping" "True"
+        Option "ClickMethod" "clickfinger"
+        Option "TappingDrag" "True"
+        Option "AccelProfile" "adaptive"
+        Option "AccelSpeed" "0.26"
+        Option "NaturalScrolling" "True"
+EndSection
 
+```
+
+<++>
 
 触摸板手势支持可以通过libinput-gestures来实现
 pacman -S libinput-gestures
@@ -900,8 +986,189 @@ alias rm='echo "This is not the command you are looking for."; false'
 修改ranger快捷键绑定让ranger支持垃圾箱（已经更新ranger配置文件）
 
 
+通过udevadm和hwdb来修改esc和capslock按键，实现终端和虚拟终端以及图形界面的按键互换（此方法为最优）  
+```
+git clone git@github.com:bbbglimmer/keyboard_touchpad.git ~/.config/keyboard_touchpad
 
-快捷键处理软件xkeysnail
+cp ~/.config/keyboard_touchpad/60-keyboard.hwdb /etc/udev/hwdb.d/60-keyboard.hwdb
+#以下修改触摸板的功能跟触摸板安装区域内容一致
+cp ~/.config/keyboard_touchpad/40-libinput.conf /usr/share/X11/xorg.config.d/40-libinput.conf
+```
+
+<++>
+
+
+快捷键处理软件脚本leftaltkeybind，实现alt按键作为功能键（此方法暂时最优，因为xkeysnail会导致触摸板不可用，但此方法会导致像st等原本绑定alt的快捷键不可用）
+alt+hjkl 等于上下左右移动
+alt+c/v  等于复制粘帖
+alt+u/e  等于滚动屏幕
+安装依赖
+`sudo pacman -S python-evdev` <++>
+`sudo yay -S python-inotify-simple` <++>
+
+安装leftaltkeybind脚本及服务
+```
+git clone git@github.com:bbbglimmer/leftaltkeybind ~/.config/leftaltkeybind
+
+cp ~/.config/leftaltkeybind/leftaltkeybind.service /etc/systemd/system/leftaltkeybind.service 
+systemctl start leftaltkeybind
+systemctl enable leftaltkeybind
+
+```
+
+安装feh 使桌面有壁纸
+`sudo pacman -S feh` <++>
+修改dwm启动后自动执行的脚本
+`nvim /script/autostart.sh` 
+使其开机启动
+
+
+安装picom （可能由于我图片太高清导致渲染期间太吃内存，电脑会变慢）
+```
+安装 picom-jonaburg-git或者picom，两者会冲突，建议前者，比较好用
+yay -S picom-jonaburg-git
+sudo pacman -S picom
+mkdir -p ~/.config/picom
+cp /etc/xdg/picom.conf ~/.config/picom
+
+修改里边的内容(不建议，建议直接用别人的脚本)
+blur-background = true;
+blur-strength = 7;
+backend = "glx";
+
+或者直接用别人设置好的
+https://github.com/ayamir/dotfiles/blob/master/nord/.config/picom/picom.conf
+运行picom测试是否可行
+修改启动脚本让它自动启用
+```
+
+安装dunst实现简单的消息提示管理 
+复制配置到.config目录下
+
+安装conky实现桌面式资源状态显示
+复制配置到.config目录下
+
+
+
+安装锁屏管理器：betterlockscreen, xautolock（用于自动锁屏）
+
+#安装betterlockscreen
+yay -S betterlockscreen
+
+#配置
+更新缓存的锁屏壁纸
+betterlockscreen -u ~/Wallpapers/image.png --fx dim,pixel
+更换锁屏壁纸及壁纸的样式
+betterlockscreen -w pixel
+锁屏,并设置锁屏桌面为模糊 变暗或者像素化
+betterlockscreen -l blur 
+或者
+betterlockscreen -l dim
+betterlockscreen -l pixel
+
+#设置为服务，让系统在休眠或者挂起的时候会执行锁屏操作
+
+# # move service file to proper dir (the aur package does this for you)
+# 如果是yay安装则不用复制,已经放到指定目录中
+# cp betterlockscreen@.service /usr/lib/systemd/system/
+# enable systemd service
+systemctl enable betterlockscreen@$USER
+# disable systemd service
+# systemctl disable betterlockscreen@$USER
+
+# 让系统定时锁定屏幕并且在排除特定应用在使用过程中的锁屏，需要设置脚本中的程序
+pacman -S xautolock
+
+开机启动脚本中执行
+xautolock -time 5  -locker "~/scripts/lockscreen.sh"
+
+编辑脚本~/scripts/lockscreen.sh
+排除不锁屏程序在焦点时不锁定屏幕。
+
+
+
+
+安装pdf 阅读器：zathura（vim风格）, evince
+安装
+pacman -S zathura
+pacman -S zathura-pdf-mupdf
+
+pacman -S evince
+
+安装浏览器主页，让浏览器打开标签时默认打开自己设定的主页
+复制startpage到~/ 目录下然后设定浏览器标签即可，或者安装chrome插件custom new tab url
+startpage来自https://github.com/migueravila/Bento
+
+安装文件管理器：thunar 或者 nemo
+sudo pacman -S thunar thunar-archive-plugin thunar-media-tags-plugin thunar-volman
+
+thunar增加smaba服务
+sudo pacman -S gvfs-smb
+
+终端下的视频播放器
+smplayer
+gui视频播放器
+bomi
+yay -S bomi
+
+vlc-git
+sudo pacman -S vlc-git
+
+gui图片图像查看器
+xnview
+yay -S xnviewmp
+
+gui复杂图片图像编辑
+gimp
+
+办公软件
+wps
+yay -S wps-office-cn
+yay -S wps-office-mui-zh-cn
+yay -S ttf-wps-fonts
+
+mardown软件
+typora
+sudo pacman -S typora
+
+
+通讯软件的安装
+deepin-wine-tim 依赖Multilib仓库中的一些32位库，Archlinux 默认没有开启 Multilib仓库，需要编辑/etc/pacman.conf，取消对应行前面的注释(Archlinux wiki):
+#[multilib-testing]
+#Include = /etc/pacman.d/mirrorlist
+
+qq
+yay -S deepin-wine-tim
+/opt/apps/com.qq.office.deepin/files/run.sh
+
+微信
+yay -S deepin-wine-wechat
+/opt/apps/com.qq.weixin.deepin/files/run.sh
+
+qq或者微信需要通过打开其desktop文件打开软件，所以需要安装rofi
+rofi的安装
+sudo pacman -S rofi
+配置.config/rofi的配置文件即可
+
+邮箱(没有特别好用的邮箱客户端，thunderbird可以使用一下但是效果也不是特别好)
+通过在我自定义的主页中快捷跳到制定邮箱网页即可,然后可以在chrome中设置邮箱邮件提醒
+
+
+自动挂载工具
+udiske
+yay -S udiskie 
+在开机脚本中添加内容(因为是针对每用户的，所以每个用户都要执行)
+udiskie --tray &
+
+让系统支持ntfs
+sudo pacman -S ntfs-3g
+
+bluthooh蓝牙管理
+https://wiki.archlinux.org/title/Bluetooth_(%E7%AE%80%E4%BD%93%E4%B8%AD%E6%96%87)
+
+
+
+
 
 golang isp配置按原来的设置一下看是否可用
 
@@ -954,7 +1221,6 @@ homectl update --shell=/bin/zsh glimmer #使用systemd-homed
 
 
 
-视频查看工具
 
 
 日志的查看
@@ -976,7 +1242,7 @@ alsactl -U store
 
 
 
-
+如何备份主引导
 如何备份分区
 
 
@@ -1072,6 +1338,110 @@ http://localhost:2017 对v2raya进行设置
 
 
 
-蓝牙驱动和软件
 
 u盘驱动和软件ntfs fat exfat等
+
+
+
+
+nvim 可以更新配置为lua模式,更现代化
+
+
+改用chromium
+安装扩展
+
+Adobe Acrobat
+Custom New Tab URL
+Google Translate
+Lunar Reader - Dark
+OneTab
+PDF Viewer for Vimium C
+Proxy SwitchyOmega
+Tampermonkey
+uBlock Origin
+Vimium C
+书签侧边栏
+
+
+
+更改主页
+https://github.com/bbbglimmer/Bento
+
+
+bios(传统bios legacy或者叫csm兼容支持模块)和uefi（esp表示EFI系统分区（即 ESP）的挂载点）安装linux的区别
+一般uefi配合gpt分区一起用，传统bios使用传统的mbr分区，但实际bios和uefi安装与分区模式没关系，只是由于硬件支持的问题有此建议。
+建议都关闭secure boot安全启动，禁用快速启动
+进入 Linux shell 环境执行 ls /sys/firmware/efi 验证当前是否处于 EFI 引导模式。如果你看到一系列文件和目录，表明你已经以 EFI 模式启动，而且可以忽略以下多余的提示；如果没有，表明你是以 BIOS 模式启动的，应当重新检查你的设置。
+bios安装不需要单独划分并且设置/boot
+uefi需要单独划分一个分区,文件格式为uefi 或者指定为fat32,然后初始化并且挂载到目录/boot/EFI
+两者均需要安装grub，但两者的引导方式不同，所以要安装的引导工具不同,后者需要efibootmgr
+https://linux.cn/article-8481-1.html
+
+
+滚挂处理
+
+
+linux解决环境污染的问题及deb包和rpm包的问题（debian ubuntu 和readhat的包）
+前者可以通过brew实现
+后者可以通过pacur实现
+
+
+
+archlinux 启动过程
+https://wiki.archlinux.org/title/Arch_boot_process_(%E7%AE%80%E4%BD%93%E4%B8%AD%E6%96%87)
+
+mbr和gpt分区的区别
+均在磁盘前做标记，gpt在磁盘后亦做标记。
+mbr最大4个主分区，一般为了扩展分区需要将一个主分区设置为扩展分区（只能有一个扩展分区），然后该扩展分区存放多个逻辑分区，实现分区扩展。
+gpt没有主分区和扩展分区以及逻辑分区的说法，分区不做限制。
+并且MBR最大仅支持2TB的硬盘。如果需要分区的硬盘容量超过2TB了，则需要使用GPT分区表类型，此分区表类型不受分区个数、硬盘大小的限制。
+详细可以看一下：
+https://blog.csdn.net/u011198997/article/details/78734628
+
+
+分区备份(MBR和GPT统一这种处理方式最简单)
+对于GPT和MBR，您可以使用“sfdisk”将设备的分区布局保存到具有-d/--dump 选项的文件中. 对设备 /dev/sda运行以下命令:
+sfdisk -d /dev/sda > sda.dump
+要稍后恢复此布局，可以运行：
+sfdisk /dev/sda < sda.dump
+具体可以查看这里
+https://wiki.archlinux.org/title/Partitioning_(%E7%AE%80%E4%BD%93%E4%B8%AD%E6%96%87)#%E5%A4%87%E4%BB%BD
+
+关于dd及文件系统块大小问题设置
+fdisk cfdisk默认可以根据硬件情况确定分区的块大小（旧版本默认为512字节，不确认这个信息是否正确,这个信息错误）
+https://wiki.archlinux.org/title/Dd#Backup_and_restore_MBR
+https://www.mail-archive.com/eug-lug@efn.org/msg12073.html
+http://blog.tdg5.com/tuning-dd-block-size/
+https://wiki.archlinux.org/title/Disk_cloning_(%E7%AE%80%E4%BD%93%E4%B8%AD%E6%96%87)
+
+硬盘只有扇区的概念，没有块的概念
+fdisk -l /dev/sda 可以查看硬盘的磁头/扇区/柱面，旧的硬盘一般扇区为512字节，新的一般为4k（sectors size即为扇区）
+
+文件系统有块大小这个说法
+df -T #查看是什么文件系统
+tune2fs -l /dev/sda1 |grep "Block size" #查看文件系统块大小
+Block size:               4096
+
+mkfs.ext4可以设定参数-b 设置块大小，默认为4k，可以设置64k，加快传输大文件的速度，但同时会导致浪费
+block设置为4K，那么创建大量的1K小文件后，磁盘空间会被大量浪费。一个文件占用一个block，100G的小文件（都是1K大小），那么会占用400G的空间，浪费300G
+所以要合理设置块大小。一般默认值4k即可。
+
+dd一般设置bs为4k与文件系统块大小一致可能传输速度最块
+
+
+dd命令克隆 和 备份磁盘
+https://wiki.archlinux.org/title/Disk_cloning#Using_ddrescue
+
+
+
+archlinux 查找二进制文件所在的包
+sudo pacman -Ss pkgfile                                                                                                                         
+extra/pkgfile 21-2 a pacman .files metadata explorer
+sudo pacman -S pkgfile
+sudo pkgfile -u更新本地文件列表
+完成之后，每当你遇到只知道文件名但不知道应该安装哪个软件包的名字的时候，运行
+pkgfile -s filename（此处为netstat）
+
+pkgfile -s netstat                                                                                                                             
+core/net-tools
+community/munin-node

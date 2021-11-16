@@ -1,0 +1,9 @@
+[Unit]
+Description=xkeysnail
+[Service]
+Environment=DISPLAY=:0
+ExecStart=/usr/bin/xkeysnail -q /home/glimmer/.config/xkeysnail/config.py
+Restart=always
+RestartSec=10
+[Install]
+WantedBy=multi-user.target
